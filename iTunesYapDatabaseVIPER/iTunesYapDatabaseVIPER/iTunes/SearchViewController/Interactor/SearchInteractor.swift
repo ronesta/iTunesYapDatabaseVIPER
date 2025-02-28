@@ -9,18 +9,23 @@ import Foundation
 import UIKit
 
 final class SearchInteractor: SearchInteractorProtocol {
-    var presenter: SearchPresenterProtocol!
-    var networkManager: NetworkManagerProtocol!
-    var storageManager: StorageManagerProtocol!
+    var presenter: SearchPresenterProtocol?
+    var networkManager: NetworkManagerProtocol?
+    var storageManager: StorageManagerProtocol?
 
     func searchAlbums(with term: String) {
-        let savedAlbums = storageManager.loadAlbums(forTerm: term)
+        storageManager?.saveSearchTerm(term)
+
+        guard let savedAlbums = storageManager?.loadAlbums(forTerm: term) else {
+            return
+        }
+
         if !savedAlbums.isEmpty {
             self.presenter?.didFetchAlbums(savedAlbums)
             return
         }
 
-        networkManager.loadAlbums(albumName: term) { [weak self] result in
+        networkManager?.loadAlbums(albumName: term) { [weak self] result in
             guard let self else {
                 return
             }
@@ -30,8 +35,8 @@ final class SearchInteractor: SearchInteractorProtocol {
                 DispatchQueue.main.async {
                     let sortedAlbums = albums.sorted { $0.collectionName < $1.collectionName }
                     self.presenter?.didFetchAlbums(sortedAlbums)
-                    self.storageManager.saveAlbums(sortedAlbums)
-                    self.storageManager.saveAlbumsForSearchQuery(albums: sortedAlbums, term)
+                    self.storageManager?.saveAlbums(sortedAlbums)
+                    self.storageManager?.saveAlbumsForSearchQuery(albums: sortedAlbums, term)
                     print("Successfully loaded \(albums.count) albums.")
                 }
             case .failure(let error):
@@ -41,6 +46,6 @@ final class SearchInteractor: SearchInteractorProtocol {
     }
 
     func loadImage(for album: Album, completion: @escaping (UIImage?) -> Void) {
-        networkManager.loadImage(from: album.artworkUrl100, completion: completion)
+        networkManager?.loadImage(from: album.artworkUrl100, completion: completion)
     }
 }
